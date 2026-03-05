@@ -1,0 +1,5 @@
+{
+  "name": "AI Malicious Website Detector",
+  "description": "A comprehensive cybersecurity tool that uses machine learning and Gemini AI to detect malicious, phishing, and suspicious websites based on URL analysis.",
+  "requestFramePermissions": []
+}
