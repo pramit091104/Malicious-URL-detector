@@ -21,6 +21,9 @@ COPY . .
 # Build the frontendReact app
 RUN cd frontend && npm run build
 
+# Verify backend TypeScript Types
+RUN cd backend && npx tsc --noEmit
+
 # Expose backend port
 EXPOSE 3000
 

@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    // We reference the NodeJS tool. Make sure to configure 'NodeJS' in Jenkins Global Tool Configuration.
-    tools {
-        nodejs 'NodeJs' 
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -14,24 +9,11 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies & Verify') {
-            steps {
-                echo "Installing NPM Workspaces Dependencies..."
-                // Install at root to handle both frontend and backend
-                sh 'npm cache clean --force'
-                sh 'npm install'
-                
-                echo "Verifying Backend TypeScript Types..."
-                dir('backend') {
-                    sh 'npx tsc --noEmit'
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker Image packaging frontend and backend..."
-                // This utilizes the Dockerfile in the root directory
+                // Since npm was failling inside your generic Jenkins container,
+                // we've moved all the dependencies and verification into the Docker build process!
                 sh 'docker build -t ai-url-detector:latest .'
             }
         }
@@ -46,7 +28,6 @@ pipeline {
         stage('Archive Artifact') {
             steps {
                 echo "Archiving .tar file so users can download it from Jenkins UI..."
-                // This saves the file in Jenkins so it doesn't get deleted by cleanWs()
                 archiveArtifacts artifacts: 'ai-url-detector-image.tar', followSymlinks: false
             }
         }
@@ -54,7 +35,6 @@ pipeline {
 
     post {
         always {
-            // Clean up the workspace to save disk space on Jenkins
             cleanWs()
             echo "CI/CD Pipeline Finished!"
         }
