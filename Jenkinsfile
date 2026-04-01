@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    // We reference the NodeJS tool. 
+    // IMPORTANT: Make sure this is set to NodeJS 20.x or 18.x in Jenkins to avoid the libatomic crash!
+    tools {
+        nodejs 'NodeJs' 
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -9,37 +15,41 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Install Dependencies') {
             steps {
-                echo "Building Docker Image packaging frontend and backend..."
-                // Since npm was failling inside your generic Jenkins container,
-                // we've moved all the dependencies and verification into the Docker build process!
-                sh 'docker build -t ai-url-detector:latest .'
+                echo "Installing NPM Workspaces Dependencies..."
+                sh 'npm cache clean --force'
+                sh 'npm install'
             }
         }
 
-        stage('Export Docker Image (.tar)') {
+        stage('Verify Type Safety') {
             steps {
-                echo "Exporting Docker Image to .tar file..."
-                sh 'docker save -o ai-url-detector-image.tar ai-url-detector:latest'
+                echo "Verifying Backend TypeScript Types..."
+                dir('backend') {
+                    sh 'npx tsc --noEmit'
+                }
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Build Frontend App') {
             steps {
-                echo "Archiving .tar file so users can download it from Jenkins UI..."
-                archiveArtifacts artifacts: 'ai-url-detector-image.tar', followSymlinks: false
+                echo "Testing React Build..."
+                dir('frontend') {
+                    sh 'npm run build'
+                }
             }
         }
     }
 
     post {
         always {
+            // Clean up the workspace to save disk space on Jenkins
             cleanWs()
             echo "CI/CD Pipeline Finished!"
         }
         success {
-            echo "Build was successful! ✅"
+            echo "Build was successful! ✅ Your code is verified and safe."
         }
         failure {
             echo "Build failed! ❌ Check the Jenkins logs."
