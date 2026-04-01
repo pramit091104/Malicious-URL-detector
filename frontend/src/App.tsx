@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Shield, ShieldAlert, ShieldCheck, Search, Loader2, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { extractFeatures, featuresToArray } from './lib/featureExtraction';
-import { MaliciousUrlModel, DEFAULT_MODEL_DATA } from './lib/mlModel';
-import { generateSecurityReport, SecurityReport } from './lib/geminiService';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export interface SecurityReport {
+  riskLevel: "Low" | "Medium" | "High" | "Critical";
+  attackType: string;
+  indicators: string[];
+  explanation: string;
+  recommendation: string;
 }
 
 export default function App() {
@@ -19,55 +24,29 @@ export default function App() {
     features: any;
     report: SecurityReport | null;
   } | null>(null);
-  const [model, setModel] = useState<MaliciousUrlModel | null>(null);
   const [isTraining, setIsTraining] = useState(false);
-
-  useEffect(() => {
-    // Load model from backend or use defaults
-    fetch('/api/model')
-      .then(res => res.json())
-      .then(data => {
-        if (data) {
-          setModel(new MaliciousUrlModel(data));
-        } else {
-          setModel(new MaliciousUrlModel(DEFAULT_MODEL_DATA));
-        }
-      })
-      .catch(() => setModel(new MaliciousUrlModel(DEFAULT_MODEL_DATA)));
-  }, []);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url || !model) return;
+    if (!url) return;
 
     setIsScanning(true);
     setResult(null);
 
     try {
-      const features = extractFeatures(url);
-      const featureArr = featuresToArray(features);
-      const prediction = model.predict(featureArr);
-
-      // Generate AI report
-      const report = await generateSecurityReport(url, features, prediction);
-
-      setResult({
-        prediction,
-        features,
-        report
-      });
-
-      // Optionally save to training data in backend
-      await fetch('/api/train', {
+      const res = await fetch('http://localhost:3000/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url,
-          features: featureArr,
-          label: prediction > 0.5 ? 1 : 0
-        })
+        body: JSON.stringify({ url })
       });
+      const data = await res.json();
 
+      if (data.error) {
+        console.error("Scan error from API:", data.error);
+        alert(data.error);
+      } else {
+        setResult(data);
+      }
     } catch (error) {
       console.error("Scan failed", error);
     } finally {
@@ -76,25 +55,17 @@ export default function App() {
   };
 
   const handleRetrain = async () => {
-    if (!model) return;
     setIsTraining(true);
     try {
-      const res = await fetch('/api/training-data');
+      const res = await fetch('http://localhost:3000/api/retrain', {
+        method: 'POST'
+      });
       const data = await res.json();
       
-      if (data.length > 0) {
-        model.train(data);
-        const modelData = model.getModelData();
-        
-        await fetch('/api/model', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(modelData)
-        });
-        
-        alert("Model retrained successfully with " + data.length + " samples!");
+      if (data.success) {
+        alert("Model retrained successfully with " + data.samplesTrained + " samples!");
       } else {
-        alert("No training data available yet. Scan some URLs first!");
+        alert(data.error || "No training data available yet. Scan some URLs first!");
       }
     } catch (error) {
       console.error("Training failed", error);
