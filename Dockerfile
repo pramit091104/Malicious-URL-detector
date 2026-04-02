@@ -25,7 +25,7 @@ RUN cd frontend && npm run build
 RUN cd backend && npx tsc --noEmit
 
 # Expose backend port
-EXPOSE 3000
+EXPOSE 4000
 
 # Move to the backend folder and start the server
 WORKDIR /app/backend

@@ -76,7 +76,7 @@ async function startServer() {
         res.status(400).json({ error: "No training data available" });
         return;
       }
-      
+
       const formattedData = data.map((item) => ({
         features: JSON.parse(item.features),
         label: item.label
@@ -141,7 +141,7 @@ async function startServer() {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
-  
+
   // Catch-all to serve index.html for React Router
   app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));

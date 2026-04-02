@@ -34,7 +34,7 @@ export default function App() {
     setResult(null);
 
     try {
-      const res = await fetch('http://localhost:3000/api/scan', {
+      const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
@@ -57,7 +57,7 @@ export default function App() {
   const handleRetrain = async () => {
     setIsTraining(true);
     try {
-      const res = await fetch('http://localhost:3000/api/retrain', {
+      const res = await fetch('/api/retrain', {
         method: 'POST'
       });
       const data = await res.json();
