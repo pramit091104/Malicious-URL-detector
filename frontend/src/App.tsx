@@ -8,21 +8,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export interface SecurityReport {
-  riskLevel: "Low" | "Medium" | "High" | "Critical";
-  attackType: string;
-  indicators: string[];
-  explanation: string;
-  recommendation: string;
-}
-
 export default function App() {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<{
     prediction: number;
     features: any;
-    report: SecurityReport | null;
   } | null>(null);
   const [isTraining, setIsTraining] = useState(false);
 
@@ -34,7 +25,8 @@ export default function App() {
     setResult(null);
 
     try {
-      const res = await fetch('/api/scan', {
+      const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${API_BASE}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
@@ -57,7 +49,8 @@ export default function App() {
   const handleRetrain = async () => {
     setIsTraining(true);
     try {
-      const res = await fetch('/api/retrain', {
+      const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${API_BASE}/api/retrain`, {
         method: 'POST'
       });
       const data = await res.json();
@@ -71,16 +64,6 @@ export default function App() {
       console.error("Training failed", error);
     } finally {
       setIsTraining(false);
-    }
-  };
-
-  const getRiskColor = (level: string) => {
-    switch (level?.toLowerCase()) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
@@ -152,7 +135,6 @@ export default function App() {
           <div className="mt-4 flex justify-center gap-6 text-xs font-medium text-slate-400">
             <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Real-time Analysis</span>
             <span className="flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-amber-500" /> ML Feature Extraction</span>
-            <span className="flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-rose-500" /> Gemini Threat Reporting</span>
           </div>
         </div>
 
@@ -163,10 +145,8 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+              className="max-w-md mx-auto space-y-6"
             >
-              {/* Left Column: Summary & Score */}
-              <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
                   <div className="text-center mb-6">
                     <div className={cn(
@@ -234,89 +214,24 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Right Column: AI Report */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
-                        <Shield className="w-5 h-5" />
-                      </div>
-                      <h3 className="font-bold text-slate-900">AI Security Analysis</h3>
-                    </div>
-                    {result.report && (
-                      <span className={cn(
-                        "px-3 py-1 rounded-full text-xs font-bold border",
-                        getRiskColor(result.report.riskLevel)
-                      )}>
-                        {result.report.riskLevel} Risk
-                      </span>
-                    )}
+              <div className="bg-slate-900 text-white p-6 rounded-3xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                    <ExternalLink className="w-6 h-6" />
                   </div>
-
-                  <div className="p-8">
-                    {result.report ? (
-                      <div className="space-y-8">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Threat Type</h4>
-                          <p className="text-xl font-bold text-slate-900">{result.report.attackType}</p>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Detailed Explanation</h4>
-                          <p className="text-slate-600 leading-relaxed">
-                            {result.report.explanation}
-                          </p>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Detected Indicators</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {result.report.indicators.map((indicator, i) => (
-                              <span key={i} className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-sm border border-slate-200">
-                                {indicator}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                          <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">Recommended Action</h4>
-                          <p className="text-indigo-900 font-medium">
-                            {result.report.recommendation}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                        <Loader2 className="w-12 h-12 animate-spin mb-4 opacity-20" />
-                        <p>Generating intelligence report...</p>
-                      </div>
-                    )}
+                  <div className="max-w-[200px]">
+                    <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Target URL</p>
+                    <p className="font-mono text-sm truncate">{url}</p>
                   </div>
                 </div>
-
-                <div className="bg-slate-900 text-white p-6 rounded-3xl flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                      <ExternalLink className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Target URL</p>
-                      <p className="font-mono text-sm truncate max-w-md">{url}</p>
-                    </div>
-                  </div>
-                  <a 
-                    href={url.startsWith('http') ? url : `http://${url}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors"
-                  >
-                    Visit Site
-                  </a>
-                </div>
+                <a 
+                  href={url.startsWith('http') ? url : `http://${url}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Visit
+                </a>
               </div>
             </motion.div>
           )}

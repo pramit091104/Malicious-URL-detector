@@ -1,0 +1,41 @@
+services:
+  # The Frontend Application
+  frontend:
+    build: 
+      context: .
+      dockerfile: frontend.Dockerfile
+    image: ai-frontend:latest
+    container_name: ai-frontend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # The Backend Application API
+  backend:
+    build: 
+      context: .
+      dockerfile: backend.Dockerfile
+    image: ai-backend:latest
+    container_name: ai-backend
+    ports:
+      - "4000:3000"
+    restart: unless-stopped
+
+  # The Deployment Controller
+  jenkins-ci:
+    build:
+      context: .
+      dockerfile: docker/jenkins.Dockerfile
+    image: custom-jenkins:latest
+    container_name: jenkins-ci
+    ports:
+      - "8085:8080"
+    user: "root"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # The socket cable giving Jenkins build authority
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

@@ -6,7 +6,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { extractFeatures, featuresToArray } from "./src/lib/featureExtraction.js";
 import { MaliciousUrlModel, DEFAULT_MODEL_DATA } from "./src/lib/mlModel.js";
-import { generateSecurityReport } from "./src/lib/geminiService.js";
 
 dotenv.config();
 const db = new Database("detector.db");
@@ -54,7 +53,6 @@ async function startServer() {
       const model = new MaliciousUrlModel(modelData);
 
       const prediction = model.predict(featureArr);
-      const report = await generateSecurityReport(url, features, prediction);
 
       db.prepare("INSERT INTO training_data (url, features, label) VALUES (?, ?, ?)").run(
         url,
@@ -62,7 +60,7 @@ async function startServer() {
         prediction > 0.5 ? 1 : 0
       );
 
-      res.json({ prediction, features, report });
+      res.json({ prediction, features });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to scan URL" });
@@ -137,15 +135,7 @@ async function startServer() {
     })));
   });
 
-  // Serve static files from the React frontend app
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  // Catch-all to serve index.html for React Router
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
-  });
+  // Note: Static files are now served separately by the frontend container.
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

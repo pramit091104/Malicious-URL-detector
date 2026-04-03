@@ -40,6 +40,14 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy with Docker Compose') {
+            steps {
+                echo "Deploying Live Application via Docker Compose..."
+                sh 'docker-compose up -d --build frontend backend'
+            }
+        }
+
     }
 
     post {
