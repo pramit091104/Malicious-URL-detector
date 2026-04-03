@@ -44,7 +44,7 @@ pipeline {
         stage('Deploy with Docker Compose') {
             steps {
                 echo "Cleaning up previous application containers..."
-                sh 'docker-compose rm -fs frontend backend || true'
+                sh 'docker rm -f ai-frontend ai-backend || true'
                 echo "Deploying Live Application via Docker Compose..."
                 sh 'docker-compose up -d --build frontend backend'
             }
