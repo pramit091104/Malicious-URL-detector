@@ -18,7 +18,9 @@ services:
     image: ai-backend:latest
     container_name: ai-backend
     ports:
-      - "4000:3000"
+      - "4000:4000"
+    volumes:
+      - ai-backend-data:/app/backend/data
     restart: unless-stopped
 
   # The Deployment Controller
@@ -39,3 +41,4 @@ services:
 
 volumes:
   jenkins_home:
+  ai-backend-data:

@@ -4,11 +4,21 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import { extractFeatures, featuresToArray } from "./src/lib/featureExtraction.js";
 import { MaliciousUrlModel, DEFAULT_MODEL_DATA } from "./src/lib/mlModel.js";
 
 dotenv.config();
-const db = new Database("detector.db");
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dataDir = path.join(__dirname, "data");
+
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const db = new Database(path.join(dataDir, "detector.db"));
 
 // Initialize database
 db.exec(`
