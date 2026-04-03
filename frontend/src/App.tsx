@@ -16,6 +16,19 @@ export default function App() {
     features: any;
   } | null>(null);
   const [isTraining, setIsTraining] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showTop10, setShowTop10] = useState(false);
+
+  // Count frequency for top 10
+  const top10 = React.useMemo(() => {
+    const freq: Record<string, number> = {};
+    history.forEach((u) => { freq[u] = (freq[u] || 0) + 1; });
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([u, count]) => ({ url: u, count }));
+  }, [history]);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +36,9 @@ export default function App() {
 
     setIsScanning(true);
     setResult(null);
+
+    // Add to history (most recent first, no duplicates)
+    setHistory((prev) => [url, ...prev.filter((u) => u !== url)]);
 
     try {
       const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || '';
@@ -93,6 +109,72 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-12">
+        {/* History and Top 10 Buttons */}
+        <div className="flex justify-end gap-4 mb-6">
+          <button
+            className="px-4 py-2 bg-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-300 transition-colors"
+            onClick={() => setShowHistory((v) => !v)}
+            type="button"
+          >
+            History
+          </button>
+          <button
+            className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-semibold hover:bg-indigo-200 transition-colors"
+            onClick={() => setShowTop10((v) => !v)}
+            type="button"
+          >
+            Filter Top 10
+          </button>
+        </div>
+
+        {/* History Dropdown */}
+        {showHistory && (
+          <div className="absolute right-10 z-20 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-80 max-h-96 overflow-y-auto">
+            <div className="font-bold mb-2">Previously Searched URLs</div>
+            {history.length === 0 ? (
+              <div className="text-slate-400 text-sm">No history yet.</div>
+            ) : (
+              <ul className="space-y-2">
+                {history.map((h, i) => (
+                  <li key={h + i} className="flex justify-between items-center">
+                    <span className="truncate max-w-[180px] text-slate-700 text-sm">{h}</span>
+                    <button
+                      className="text-xs text-indigo-600 hover:underline"
+                      onClick={() => { setUrl(h); setShowHistory(false); }}
+                    >
+                      Use
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Top 10 Dropdown */}
+        {showTop10 && (
+          <div className="absolute right-40 z-20 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-80 max-h-96 overflow-y-auto">
+            <div className="font-bold mb-2">Top 10 Most Searched</div>
+            {top10.length === 0 ? (
+              <div className="text-slate-400 text-sm">No data yet.</div>
+            ) : (
+              <ul className="space-y-2">
+                {top10.map((item, i) => (
+                  <li key={item.url + i} className="flex justify-between items-center">
+                    <span className="truncate max-w-[140px] text-slate-700 text-sm">{item.url}</span>
+                    <span className="text-xs text-slate-500">{item.count} times</span>
+                    <button
+                      className="text-xs text-indigo-600 hover:underline ml-2"
+                      onClick={() => { setUrl(item.url); setShowTop10(false); }}
+                    >
+                      Use
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
