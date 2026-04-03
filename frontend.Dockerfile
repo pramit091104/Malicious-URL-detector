@@ -2,6 +2,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install heavy system tools required for native C++ SQLite compilation fallback
+RUN apk update && apk add --no-cache python3 make g++
 # The frontend MUST know the absolute URL of the backend at build-time.
 # We map the backend locally to port 4000. 
 ARG VITE_API_BASE_URL=http://localhost:4000
