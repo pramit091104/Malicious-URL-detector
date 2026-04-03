@@ -12,7 +12,8 @@ RUN npm install
 
 COPY backend ./backend
 
-EXPOSE 3000
+ENV PORT=4000
+EXPOSE 4000
 
 WORKDIR /app/backend
 CMD ["npm", "run", "start"]
