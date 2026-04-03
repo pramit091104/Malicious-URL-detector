@@ -20,6 +20,25 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showTop10, setShowTop10] = useState(false);
 
+  function showCustomAlert(message: string) {
+    const alertBox = document.createElement("div");
+    alertBox.innerText = message;
+    alertBox.style.position = "fixed";
+    alertBox.style.top = "20px";
+    alertBox.style.right = "20px";
+    alertBox.style.background = "#16a34a";
+    alertBox.style.color = "white";
+    alertBox.style.padding = "12px 18px";
+    alertBox.style.borderRadius = "10px";
+    alertBox.style.zIndex = "9999";
+
+    document.body.appendChild(alertBox);
+
+    setTimeout(() => {
+      alertBox.remove();
+    }, 3000);
+  }
+
   // Count frequency for top 10
   const top10 = React.useMemo(() => {
     const freq: Record<string, number> = {};
@@ -51,7 +70,7 @@ export default function App() {
 
       if (data.error) {
         console.error("Scan error from API:", data.error);
-        alert(data.error);
+        showCustomAlert(data.error);
       } else {
         setResult(data);
       }
@@ -72,9 +91,9 @@ export default function App() {
       const data = await res.json();
       
       if (data.success) {
-        alert("Model retrained successfully with " + data.samplesTrained + " samples!");
+        showCustomAlert("Model retrained successfully with " + data.samplesTrained + " samples!");
       } else {
-        alert(data.error || "No training data available yet. Scan some URLs first!");
+        showCustomAlert(data.error || "No training data available yet. Scan some URLs first!");
       }
     } catch (error) {
       console.error("Training failed", error);
