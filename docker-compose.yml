@@ -4,8 +4,8 @@ services:
     build: 
       context: .
       dockerfile: frontend.Dockerfile
-    image: ai-frontend:latest
-    container_name: ai-frontend
+    image: siddhesh-frontend:latest
+    container_name: siddhesh-frontend
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -15,8 +15,8 @@ services:
     build: 
       context: .
       dockerfile: backend.Dockerfile
-    image: ai-backend:latest
-    container_name: ai-backend
+    image: siddhesh-backend:latest
+    container_name: siddhesh-backend 
     ports:
       - "4000:3000"
     environment:
