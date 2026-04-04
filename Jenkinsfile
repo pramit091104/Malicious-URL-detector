@@ -15,11 +15,36 @@ pipeline {
             }
         }
 
+        stage('Install Dependencies') {
+            steps {
+                echo "Installing NPM Workspaces Dependencies..."
+                sh 'npm cache clean --force'
+                sh 'npm install'
+            }
+        }
+
+        stage('Verify Type Safety') {
+            steps {
+                echo "Verifying Backend TypeScript Types..."
+                dir('backend') {
+                    sh 'npx tsc --noEmit'
+                }
+            }
+        }
+
+        stage('Build Frontend App') {
+            steps {
+                echo "Testing React Build..."
+                dir('frontend') {
+                    sh 'npm run build'
+                }
+            }
+        }
 
         stage('Deploy with Docker Compose') {
             steps {
                 echo "Cleaning up previous application containers..."
-                sh 'docker rm -f ai-frontend ai-backend || true'
+                sh 'docker rm -f siddhesh-frontend siddhesh-backend || true'
                 echo "Deploying Live Application via Docker Compose..."
                 sh 'docker-compose up -d --build frontend backend'
             }

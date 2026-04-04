@@ -1,6 +1,6 @@
 FROM node:20-alpine
 # Install heavy system tools required for native C++ SQLite compilation
-RUN apk update && apk add --no-cache python3 make g++
+RUN apk update && apk add --no-cache python3 make g++ gcc libc-dev
 
 WORKDIR /app
 
