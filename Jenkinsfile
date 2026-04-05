@@ -1,8 +1,7 @@
 pipeline {
     agent any
 
-    // We reference the NodeJS tool. 
-    // IMPORTANT: Make sure this is set to NodeJS 20.x or 18.x in Jenkins to avoid the libatomic crash!
+    // Reference the NodeJS tool configured in Jenkins Global Tool Configuration
     tools {
         nodejs 'NodeJs' 
     }
@@ -15,21 +14,21 @@ pipeline {
             }
         }
 
-
         stage('Deploy with Docker Compose') {
             steps {
                 echo "Cleaning up previous application containers..."
-                sh 'docker rm -f ai-frontend ai-backend || true'
+                sh 'docker-compose down --remove-orphans'
+                
                 echo "Deploying Live Application via Docker Compose..."
+                // --build ensures that any code changes are baked into new images
                 sh 'docker-compose up -d --build frontend backend'
             }
         }
-
     }
 
     post {
         always {
-            // Clean up the workspace to save disk space on Jenkins
+            // Clean up the workspace to save disk space on the Jenkins agent
             cleanWs()
             echo "CI/CD Pipeline Finished!"
         }
@@ -37,7 +36,7 @@ pipeline {
             echo "Build was successful! ✅ Your code is verified and safe."
         }
         failure {
-            echo "Build failed! ❌ Check the Jenkins logs."
+            echo "Build failed! ❌ Check the Jenkins logs for Docker or Build errors."
         }
     }
 }
