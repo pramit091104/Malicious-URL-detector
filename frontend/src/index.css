@@ -8,6 +8,6 @@
 
 @layer base {
   body {
-    @apply bg-[#F8FAFC] text-slate-900;
+    @apply bg-green-50 text-green-900;
   }
 }
