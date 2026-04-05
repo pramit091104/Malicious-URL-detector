@@ -15,15 +15,20 @@ pipeline {
         }
 
         stage('Deploy with Docker Compose') {
-            steps {
-                echo "Cleaning up previous application containers..."
-                sh 'docker-compose down --remove-orphans'
-                
-                echo "Deploying Live Application via Docker Compose..."
-                // --build ensures that any code changes are baked into new images
-                sh 'docker-compose up -d --build frontend backend'
-            }
-        }
+    steps {
+        echo "Cleaning up previous application containers..."
+        
+        // 1. Standard compose cleanup
+        sh 'docker-compose down --remove-orphans'
+        
+        // 2. Explicitly remove the conflicting container name by force
+        // The '|| true' ensures the pipeline doesn't fail if the container is already gone
+        sh 'docker rm -f pramit-frontend pramit-backend || true'
+        
+        echo "Deploying Live Application via Docker Compose..."
+        sh 'docker-compose up -d --build frontend backend'
+    }
+}
     }
 
     post {
