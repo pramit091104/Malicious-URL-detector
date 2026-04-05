@@ -4,8 +4,8 @@ services:
     build: 
       context: .
       dockerfile: frontend.Dockerfile
-    image: ai-frontend:latest
-    container_name: ai-frontend
+    image: smruti-frontend:latest
+    container_name: smruti-frontend
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -15,10 +15,10 @@ services:
     build: 
       context: .
       dockerfile: backend.Dockerfile
-    image: ai-backend:latest
-    container_name: ai-backend
+    image: smruti-backend:latest
+    container_name: smruti-backend
     ports:
-      - "4000:4000"
+      - "4000:3000"
     volumes:
       - ai-backend-data:/app/backend/data
     restart: unless-stopped
