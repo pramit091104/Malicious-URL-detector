@@ -1,22 +1,22 @@
 services:
   # The Frontend Application
   frontend:
-    build: 
+    build:
       context: .
       dockerfile: frontend.Dockerfile
-    image: ai-frontend:latest
-    container_name: ai-frontend
+    image: pramit-frontend:latest
+    container_name: pramit-frontend
     ports:
       - "3000:3000"
     restart: unless-stopped
 
   # The Backend Application API
   backend:
-    build: 
+    build:
       context: .
       dockerfile: backend.Dockerfile
-    image: ai-backend:latest
-    container_name: ai-backend
+    image: pramit-backend:latest
+    container_name: pramit-backend
     ports:
       - "4000:3000"
     environment:
