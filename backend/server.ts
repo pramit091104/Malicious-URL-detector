@@ -5,8 +5,8 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { extractFeatures, featuresToArray } from "./src/lib/featureExtraction.js";
-import { MaliciousUrlModel, DEFAULT_MODEL_DATA } from "./src/lib/mlModel.js";
+import { extractFeatures } from "./src/lib/featureExtraction.js";
+import { getModelPrediction } from "./src/lib/mlModel.js";
 
 dotenv.config();
 
@@ -56,94 +56,25 @@ async function startServer() {
       }
 
       const features = extractFeatures(url);
-      const featureArr = featuresToArray(features);
 
-      const row = db.prepare("SELECT * FROM model_state ORDER BY updated_at DESC LIMIT 1").get() as any;
-      const modelData = row ? { weights: JSON.parse(row.weights), bias: row.bias } : DEFAULT_MODEL_DATA;
-      const model = new MaliciousUrlModel(modelData);
+      // Use our new Hugging Face ONNX Model wrapper
+      const modelResult = await getModelPrediction(url);
 
-      const prediction = model.predict(featureArr);
-
+      // We still save the scan history in the database for auditing
       db.prepare("INSERT INTO training_data (url, features, label) VALUES (?, ?, ?)").run(
         url,
-        JSON.stringify(featureArr),
-        prediction > 0.5 ? 1 : 0
+        JSON.stringify(features),
+        modelResult.score > 0.5 ? 1 : 0
       );
 
-      res.json({ prediction, features });
+      res.json({ prediction: modelResult.score, label: modelResult.label, rawScore: modelResult.rawScore, features });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to scan URL" });
     }
   });
 
-  app.post("/api/retrain", (req, res) => {
-    try {
-      const data = db.prepare("SELECT * FROM training_data").all() as any[];
-      if (data.length === 0) {
-        res.status(400).json({ error: "No training data available" });
-        return;
-      }
-
-      const formattedData = data.map((item) => ({
-        features: JSON.parse(item.features),
-        label: item.label
-      }));
-
-      const row = db.prepare("SELECT * FROM model_state ORDER BY updated_at DESC LIMIT 1").get() as any;
-      const modelData = row ? { weights: JSON.parse(row.weights), bias: row.bias } : DEFAULT_MODEL_DATA;
-      const model = new MaliciousUrlModel(modelData);
-
-      model.train(formattedData);
-
-      const newWeights = model.getModelData();
-      db.prepare("INSERT INTO model_state (weights, bias) VALUES (?, ?)").run(
-        JSON.stringify(newWeights.weights),
-        newWeights.bias
-      );
-      res.json({ success: true, samplesTrained: data.length });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to retrain model" });
-    }
-  });
-
-  app.get("/api/model", (req, res) => {
-    const row = db.prepare("SELECT * FROM model_state ORDER BY updated_at DESC LIMIT 1").get() as any;
-    if (row) {
-      res.json({ weights: JSON.parse(row.weights), bias: row.bias });
-    } else {
-      res.json(null);
-    }
-  });
-
-  app.post("/api/model", (req, res) => {
-    const { weights, bias } = req.body;
-    db.prepare("INSERT INTO model_state (weights, bias) VALUES (?, ?)").run(
-      JSON.stringify(weights),
-      bias
-    );
-    res.json({ success: true });
-  });
-
-  app.post("/api/train", (req, res) => {
-    const { url, features, label } = req.body;
-    db.prepare("INSERT INTO training_data (url, features, label) VALUES (?, ?, ?)").run(
-      url,
-      JSON.stringify(features),
-      label
-    );
-    res.json({ success: true });
-  });
-
-  app.get("/api/training-data", (req, res) => {
-    const rows = db.prepare("SELECT * FROM training_data").all() as any[];
-    res.json(rows.map(r => ({
-      url: r.url,
-      features: JSON.parse(r.features),
-      label: r.label
-    })));
-  });
+  // Legacy Retraining & Weight API endpoints removed since inference is now handled by an ONNX HuggingFace Model.
 
   // Note: Static files are now served separately by the frontend container.
 

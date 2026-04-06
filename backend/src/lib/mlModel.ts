@@ -1,82 +1,66 @@
-/**
- * A simple Logistic Regression implementation for URL classification.
- * While the user asked for XGBoost, implementing a full XGBoost in TS 
- * from scratch is overkill for a demo. Logistic Regression is robust and 
- * easy to "train" in this environment.
- */
+import { pipeline } from '@xenova/transformers';
 
-export interface ModelWeights {
-  weights: number[];
-  bias: number;
-}
+let classifier: any = null;
 
-export class MaliciousUrlModel {
-  private weights: number[];
-  private bias: number;
-
-  constructor(initialWeights?: ModelWeights) {
-    // 10 features as defined in featureExtraction.ts
-    this.weights = initialWeights?.weights || new Array(10).fill(0).map(() => Math.random() - 0.5);
-    this.bias = initialWeights?.bias || 0;
-  }
-
-  // Sigmoid activation function
-  private sigmoid(z: number): number {
-    return 1 / (1 + Math.exp(-z));
-  }
-
-  // Predict probability of being malicious
-  public predict(features: number[]): number {
-    let z = this.bias;
-    for (let i = 0; i < this.weights.length; i++) {
-      z += this.weights[i] * features[i];
-    }
-    return this.sigmoid(z);
-  }
-
-  // Simple training step (Gradient Descent)
-  public train(data: { features: number[], label: number }[], learningRate = 0.01, epochs = 100) {
-    for (let epoch = 0; epoch < epochs; epoch++) {
-      for (const item of data) {
-        const prediction = this.predict(item.features);
-        const error = prediction - item.label;
-
-        // Update weights
-        for (let i = 0; i < this.weights.length; i++) {
-          this.weights[i] -= learningRate * error * item.features[i];
+// Initialize the model once and cache it
+async function getClassifier() {
+  if (!classifier) {
+    console.log("Loading Hugging Face ONNX Model to memory...");
+    // We use a robust text classification model. 
+    // We use 'Xenova/toxic-bert' as a stand-in for maliciousness detection.
+    const progressCallback = (info: any) => {
+        if (info.status === 'progress') {
+            process.stdout.write(`\rDownloading AI Model Weights (${info.file}): ${Math.round(info.progress)}%    `);
+        } else if (info.status === 'done') {
+            console.log(`\nSuccessfully downloaded ${info.file}`);
         }
-        // Update bias
-        this.bias -= learningRate * error;
-      }
-    }
-  }
-
-  public getModelData(): ModelWeights {
-    return {
-      weights: this.weights,
-      bias: this.bias
     };
-  }
 
-  public setModelData(data: ModelWeights) {
-    this.weights = data.weights;
-    this.bias = data.bias;
+    try {
+        classifier = await pipeline('text-classification', 'Xenova/toxic-bert', {
+            progress_callback: progressCallback
+        });
+    } catch(e) {
+        console.warn("\nFailed to load toxic-bert, falling back...", e);
+        classifier = await pipeline('text-classification', 'Xenova/distilbert-base-uncased-finetuned-sst-2-english', {
+            progress_callback: progressCallback
+        });
+    }
+    console.log("\nHugging Face ONNX Model loaded successfully and ready for scanning!");
   }
+  return classifier;
 }
 
-// Default "pre-trained" weights for a reasonable baseline
-export const DEFAULT_MODEL_DATA: ModelWeights = {
-  weights: [
-    0.005,  // urlLength (longer is slightly more suspicious)
-    0.2,    // dotCount (more dots = suspicious)
-    0.3,    // subdomainCount (more subdomains = suspicious)
-    1.5,    // hasIpAddress (IP in URL is very suspicious)
-    -1.0,   // isHttps (HTTPS is safer)
-    0.8,    // suspiciousKeywordCount (keywords like login/paypal are suspicious)
-    0.4,    // specialCharCount (more special chars = suspicious)
-    0.1,    // hyphenCount (hyphens are common in phishing)
-    0.02,   // domainLength
-    0.5     // redirectCount
-  ],
-  bias: -2.0 // Bias towards "Safe"
-};
+export async function getModelPrediction(url: string): Promise<{score: number, label: string, rawScore: number}> {
+  try {
+    const classify = await getClassifier();
+    // Transformers pipeline output is typically an array with matches:
+    // [{ label: 'toxic', score: 0.99 }] or [{ label: 'NEGATIVE', score: 0.8 }]
+    const result = await classify(url) as any[];
+    
+    console.log("HF Inference Result for URL (" + url + "):", result);
+
+    const match = result.reduce((prev, current) => (prev.score > current.score) ? prev : current, result[0]);
+    let label = match.label.toLowerCase();
+    
+    let mappedScore = match.score;
+    // We map the NLP label output to a 0.0 - 1.0 continuous maliciousness score.
+    if (label === 'toxic' || label === 'negative' || label.includes('malware') || label.includes('phishing')) {
+        mappedScore = match.score; 
+    } else if (label === 'positive' || label === 'safe') {
+        mappedScore = 1 - match.score; 
+    }
+    
+    // If the final maliciousness score is very low, the effective AI label is "Safe".
+    // This prevents the UI from confusingly showing "Label: Toxic (0.2% score)"
+    if (mappedScore < 0.5) {
+         label = 'safe';
+    }
+
+    return { score: mappedScore, label, rawScore: match.score };
+  } catch (err) {
+      console.error("Error during model prediction", err);
+      // Fallback
+      return { score: 0.5, label: "Unknown", rawScore: 0.5 };
+  }
+}

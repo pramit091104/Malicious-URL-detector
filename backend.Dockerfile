@@ -12,6 +12,9 @@ RUN npm install
 
 COPY backend ./backend
 
+# Pre-cache the Hugging Face ONNX Model during Docker build
+RUN cd backend && npx tsx -e "import { getModelPrediction } from './src/lib/mlModel.js'; getModelPrediction('http://example.com').then(() => process.exit(0));"
+
 EXPOSE 3000
 
 WORKDIR /app/backend
