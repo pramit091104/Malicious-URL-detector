@@ -82,7 +82,7 @@ export default function App() {
     setHistory((prev) => [url, ...prev.filter((u) => u !== url)]);
 
     try {
-      const res = await fetch('http://localhost:4000/api/scan', {
+      const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
