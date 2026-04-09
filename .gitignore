@@ -6,5 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
-project_report.md
 *.tar
+*.md
+!README.md
