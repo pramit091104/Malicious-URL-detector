@@ -4,8 +4,8 @@ services:
     build:
       context: .
       dockerfile: frontend.Dockerfile
-    image: pramit-frontend:latest
-    container_name: pramit-frontend
+    image: main-frontend:latest
+    container_name: main-frontend
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -15,8 +15,8 @@ services:
     build:
       context: .
       dockerfile: backend.Dockerfile
-    image: pramit-backend:latest
-    container_name: pramit-backend
+    image: main-backend:latest
+    container_name: main-backend
     ports:
       - "4000:3000"
     environment:
