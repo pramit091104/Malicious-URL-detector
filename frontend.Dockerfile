@@ -32,15 +32,16 @@ RUN npm install
 COPY . .
 RUN cd frontend && npm run build
 
-# Stage 2: Serve the final assets
-FROM node:20-alpine AS runner
+# Stage 2: Serve the final assets via Nginx
+FROM nginx:alpine
 WORKDIR /app
 
-# Install lightweight static file server globally
-RUN npm install -g serve
+# Copy the custom Nginx configuration
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy only the compiled dist folder
-COPY --from=builder /app/frontend/dist ./dist
+# Copy only the compiled dist folder from the builder stage
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
+# Frontend exposed on 3000
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["nginx", "-g", "daemon off;"]
