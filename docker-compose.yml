@@ -1,5 +1,5 @@
 services:
-  # The Frontend Application
+  # The Frontend Application (Nginx: serves static files + proxies /api to backend)
   frontend:
     build:
       context: .
@@ -7,7 +7,9 @@ services:
     image: pramit-frontend:latest
     container_name: pramit-frontend
     ports:
-      - "3001:3000"
+      - "3001:80"
+    depends_on:
+      - backend
     restart: unless-stopped
     networks:
       - app-network
