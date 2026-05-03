@@ -100,7 +100,7 @@ pipeline {
                 script {
                     // Dynamically fetch the random port assigned to the backend host
                     env.ACTUAL_BACKEND_PORT = sh(
-                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
                         returnStdout: true
                     ).trim()
                     
