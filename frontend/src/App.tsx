@@ -100,6 +100,23 @@ export default function App() {
 
     const dismissTime = timeoutMap[type];
 
+    // Add space-between to position close button on the right
+    alertBox.style.justifyContent = "space-between";
+
+    // Create close button
+    const closeBtn = document.createElement("button");
+    closeBtn.innerText = "✕";
+    closeBtn.style.marginLeft = "12px";
+    closeBtn.style.background = "none";
+    closeBtn.style.border = "none";
+    closeBtn.style.color = "white";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.style.fontSize = "16px";
+    closeBtn.style.fontWeight = "bold";
+    closeBtn.style.padding = "0 4px";
+    closeBtn.onclick = () => alertBox.remove();
+
+    alertBox.appendChild(closeBtn);
     document.body.appendChild(alertBox);
 
     setTimeout(() => {
