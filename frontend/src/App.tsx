@@ -42,17 +42,42 @@ export default function App() {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
-  function showCustomAlert(message: string) {
+  function showCustomAlert(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') {
     const alertBox = document.createElement("div");
     alertBox.innerText = message;
     alertBox.style.position = "fixed";
     alertBox.style.top = "20px";
     alertBox.style.right = "20px";
-    alertBox.style.background = "#16a34a";
-    alertBox.style.color = "white";
     alertBox.style.padding = "12px 18px";
     alertBox.style.borderRadius = "10px";
     alertBox.style.zIndex = "9999";
+    alertBox.style.color = "white";
+    alertBox.style.fontWeight = "500";
+    alertBox.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)";
+
+    // Define colors and styles for different alert types
+    const alertStyles = {
+      success: {
+        background: "#16a34a", // green-600
+        borderLeft: "4px solid #15803d" // green-700
+      },
+      error: {
+        background: "#dc2626", // red-600
+        borderLeft: "4px solid #b91c1c" // red-700
+      },
+      warning: {
+        background: "#d97706", // amber-600
+        borderLeft: "4px solid #b45309" // amber-700
+      },
+      info: {
+        background: "#2563eb", // blue-600
+        borderLeft: "4px solid #1d4ed8" // blue-700
+      }
+    };
+
+    const style = alertStyles[type];
+    alertBox.style.background = style.background;
+    alertBox.style.borderLeft = style.borderLeft;
 
     document.body.appendChild(alertBox);
 
@@ -91,9 +116,10 @@ export default function App() {
 
       if (data.error) {
         console.error("Scan error from API:", data.error);
-        showCustomAlert(data.error);
+        showCustomAlert(data.error, 'error');
       } else {
         setResult(data);
+        showCustomAlert('URL scanned successfully!', 'success');
       }
     } catch (error) {
       console.error("Scan failed", error);
