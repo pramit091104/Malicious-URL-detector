@@ -242,6 +242,40 @@ export default function App() {
         </div>
 
         {/* Results Section */}
+        {!result && !isScanning && (
+          <div className={`max-w-3xl mx-auto rounded-3xl border shadow-sm p-10 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
+            <div className="text-center">
+              <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200">
+                <Shield className="w-7 h-7" />
+              </div>
+              <h3 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                No scan results yet
+              </h3>
+              <p className={`max-w-xl mx-auto text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                Enter a URL above to begin analysis. Once a scan completes, we will show threat details, confidence score, and detected features here.
+              </p>
+              <div className="mt-6 space-y-3 text-left text-sm">
+                <p className={`font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>Try these examples:</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setUrl('https://example.com')}
+                    className="rounded-full border px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-slate-700 dark:text-indigo-300 dark:hover:bg-slate-700"
+                  >
+                    https://example.com
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUrl('http://phishing-site.example')}
+                    className="rounded-full border px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:border-slate-700 dark:text-rose-300 dark:hover:bg-slate-700"
+                  >
+                    http://phishing-site.example
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {result && (
             <motion.div
