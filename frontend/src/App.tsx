@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, ShieldCheck, Search, Loader2, RefreshCw, AlertTriangle, ExternalLink, Moon, Sun, History, X, Clock, ChevronRight, Activity } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, Search, Loader2, RefreshCw, AlertTriangle, ExternalLink, Moon, Sun, History, X, Clock, ChevronRight, Activity, Github, Twitter, Globe, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -115,7 +115,7 @@ export default function App() {
 
 
   return (
-    <div className={`min-h-screen font-sans selection:bg-indigo-100 transition-colors duration-500 relative ${theme === 'dark' ? 'bg-slate-950 text-slate-100 selection:bg-indigo-900' : 'bg-[#F8FAFC] text-slate-900'}`}>
+    <div className={`min-h-screen font-sans flex flex-col selection:bg-indigo-100 transition-colors duration-500 relative ${theme === 'dark' ? 'bg-slate-950 text-slate-100 selection:bg-indigo-900' : 'bg-[#F8FAFC] text-slate-900'}`}>
       {/* LetterGlitch Background */}
       <div className={cn(
         "fixed inset-0 z-0 pointer-events-none transition-opacity duration-1000",
@@ -159,7 +159,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-5xl mx-auto px-6 py-12">
+      <main className="flex-1 max-w-5xl mx-auto px-6 py-12 w-full">
           {/* History and Top 10 Buttons */}
           <div className="flex justify-end gap-3 mb-8">
             <button
@@ -470,16 +470,61 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className={`max-w-5xl mx-auto px-6 py-12 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2 opacity-50">
-              <Shield className="w-5 h-5" />
-              <span className="text-sm font-bold">Sentinel AI v1.0</span>
+        <footer className={`mt-12 border-t ${theme === 'dark' ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-white/50'} backdrop-blur-md w-full`}>
+          <div className="max-w-5xl mx-auto px-6 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <Shield className="text-white w-5 h-5" />
+                  </div>
+                  <span className={`font-bold text-xl tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Sentinel AI</span>
+                </div>
+                <p className={`text-sm leading-relaxed mb-6 max-w-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Advanced malicious URL detection powered by hybrid machine learning and threat intelligence. 
+                  Protecting your digital journey one link at a time.
+                </p>
+                <div className="flex gap-4">
+                  <a href="#" className={`p-2 rounded-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-indigo-600'}`}>
+                    <Github className="w-5 h-5" />
+                  </a>
+                  <a href="#" className={`p-2 rounded-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-indigo-600'}`}>
+                    <Twitter className="w-5 h-5" />
+                  </a>
+                  <a href="#" className={`p-2 rounded-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:text-indigo-600'}`}>
+                    <Globe className="w-5 h-5" />
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <h4 className={`font-bold text-sm uppercase tracking-widest mb-6 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Resources</h4>
+                <ul className="space-y-4 text-sm font-medium">
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>Documentation</a></li>
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>API Reference</a></li>
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>Security Labs</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className={`font-bold text-sm uppercase tracking-widest mb-6 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Legal</h4>
+                <ul className="space-y-4 text-sm font-medium">
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>Privacy Policy</a></li>
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>Terms of Service</a></li>
+                  <li><a href="#" className={`transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600'}`}>Cookie Settings</a></li>
+                </ul>
+              </div>
             </div>
-            <div className={`flex gap-8 text-sm font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Documentation</a>
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">API Reference</a>
-              <a href="#" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Privacy Policy</a>
+
+            <div className={`pt-6 border-t flex flex-col md:flex-row justify-between items-center gap-6 ${theme === 'dark' ? 'border-slate-800' : 'border-slate-100'}`}>
+              <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                © {new Date().getFullYear()} Sentinel AI Security. All rights reserved.
+              </p>
+              
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${theme === 'dark' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                All Systems Operational
+              </div>
             </div>
           </div>
         </footer>
