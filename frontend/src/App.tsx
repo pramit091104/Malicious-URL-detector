@@ -119,11 +119,11 @@ export default function App() {
       {/* LetterGlitch Background */}
       <div className={cn(
         "fixed inset-0 z-0 pointer-events-none transition-opacity duration-1000",
-        theme === 'dark' ? "opacity-40" : "opacity-40"
+        theme === 'dark' ? "opacity-50" : "opacity-15"
       )}>
         <LetterGlitch
           glitchColors={theme === 'dark'
-            ? ['#22c55e', '#16a34a', '#15803d'] 
+            ? ['#22c55e', '#16a34a', '#15803d']
             : ['#166534', '#14532d', '#064e3b']
           }
           glitchSpeed={100}
