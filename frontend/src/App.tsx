@@ -13,9 +13,10 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [result, setResult] = useState<{
     prediction: number;
+    label?: string;
+    rawScore?: number;
     features: any;
   } | null>(null);
-  const [isTraining, setIsTraining] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showTop10, setShowTop10] = useState(false);
@@ -40,6 +41,25 @@ export default function App() {
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
   };
+
+  function showCustomAlert(message: string) {
+    const alertBox = document.createElement("div");
+    alertBox.innerText = message;
+    alertBox.style.position = "fixed";
+    alertBox.style.top = "20px";
+    alertBox.style.right = "20px";
+    alertBox.style.background = "#16a34a";
+    alertBox.style.color = "white";
+    alertBox.style.padding = "12px 18px";
+    alertBox.style.borderRadius = "10px";
+    alertBox.style.zIndex = "9999";
+
+    document.body.appendChild(alertBox);
+
+    setTimeout(() => {
+      alertBox.remove();
+    }, 3000);
+  }
 
   // Count frequency for top 10
   const top10 = React.useMemo(() => {
@@ -71,7 +91,7 @@ export default function App() {
 
       if (data.error) {
         console.error("Scan error from API:", data.error);
-        alert(data.error);
+        showCustomAlert(data.error);
       } else {
         setResult(data);
       }
@@ -82,25 +102,6 @@ export default function App() {
     }
   };
 
-  const handleRetrain = async () => {
-    setIsTraining(true);
-    try {
-      const res = await fetch('/api/retrain', {
-        method: 'POST'
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        alert("Model retrained successfully with " + data.samplesTrained + " samples!");
-      } else {
-        alert(data.error || "No training data available yet. Scan some URLs first!");
-      }
-    } catch (error) {
-      console.error("Training failed", error);
-    } finally {
-      setIsTraining(false);
-    }
-  };
 
   return (
     <div className={`min-h-screen font-sans selection:bg-indigo-100 ${theme === 'dark' ? 'bg-slate-900 text-slate-100 selection:bg-indigo-900' : 'bg-[#F8FAFC] text-slate-900'}`}>
@@ -117,20 +118,12 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={toggleTheme}
               className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-500 hover:text-indigo-600'}`}
               aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             >
               {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-            <button 
-              onClick={handleRetrain}
-              disabled={isTraining}
-              className={`flex items-center gap-2 text-xs font-semibold transition-colors disabled:opacity-50 ${theme === 'dark' ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-500 hover:text-indigo-600'}`}
-            >
-              {isTraining ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Retrain Model
             </button>
           </div>
         </div>
@@ -209,7 +202,7 @@ export default function App() {
             Analyze URLs with <span className={`text-indigo-600 ${theme === 'dark' ? '' : ''}`}>AI Intelligence</span>
           </h2>
           <p className={`max-w-2xl mx-auto text-lg ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
-            Our hybrid system combines machine learning feature analysis with Gemini 1.5 Pro 
+            Our hybrid system combines machine learning feature analysis with Gemini 1.5 Pro
             to identify phishing, malware, and suspicious web patterns.
           </p>
         </div>
@@ -257,73 +250,85 @@ export default function App() {
               exit={{ opacity: 0, y: -20 }}
               className="max-w-md mx-auto space-y-6"
             >
-                <div className={`p-8 rounded-3xl border shadow-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <div className="text-center mb-6">
-                    <div className={cn(
-                      "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4",
-                      result.prediction > 0.7 ? "bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400" : 
-                      result.prediction > 0.3 ? "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" : 
-                      "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
-                    )}>
-                      {result.prediction > 0.7 ? <ShieldAlert className="w-10 h-10" /> : 
-                       result.prediction > 0.3 ? <AlertTriangle className="w-10 h-10" /> : 
-                       <ShieldCheck className="w-10 h-10" />}
-                    </div>
-                    <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                      {result.prediction > 0.7 ? 'Malicious' : 
-                       result.prediction > 0.3 ? 'Suspicious' : 
-                       'Likely Safe'}
-                    </h3>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Threat Probability Score</p>
+              <div className={`p-8 rounded-3xl border shadow-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="text-center mb-6">
+                  <div className={cn(
+                    "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4",
+                    result.prediction > 0.7 ? "bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400" :
+                      result.prediction > 0.3 ? "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" :
+                        "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    {result.prediction > 0.7 ? <ShieldAlert className="w-10 h-10" /> :
+                      result.prediction > 0.3 ? <AlertTriangle className="w-10 h-10" /> :
+                        <ShieldCheck className="w-10 h-10" />}
                   </div>
+                  <h3 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    {result.prediction > 0.7 ? 'Malicious' :
+                      result.prediction > 0.3 ? 'Suspicious' :
+                        'Likely Safe'}
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Threat Probability Score</p>
+                </div>
 
-                  <div className="relative pt-1">
-                    <div className="flex mb-2 items-center justify-between">
-                      <div>
-                        <span className={`text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${theme === 'dark' ? 'text-indigo-400 bg-indigo-900/50' : 'text-indigo-600 bg-indigo-200'}`}>
-                          Confidence
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-xs font-semibold inline-block ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                          {(result.prediction * 100).toFixed(1)}%
-                        </span>
-                      </div>
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div>
+                      <span className={`text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${theme === 'dark' ? 'text-indigo-400 bg-indigo-900/50' : 'text-indigo-600 bg-indigo-200'}`}>
+                        Confidence
+                      </span>
                     </div>
-                    <div className={`overflow-hidden h-2 mb-4 text-xs flex rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${result.prediction * 100}%` }}
-                        className={cn(
-                          "shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-1000",
-                          result.prediction > 0.7 ? "bg-rose-500" : 
-                          result.prediction > 0.3 ? "bg-amber-500" : 
-                          "bg-emerald-500"
-                        )}
-                      />
+                    <div className="text-right">
+                      <span className={`text-xs font-semibold inline-block ${theme === 'dark' ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                        {(result.prediction * 100).toFixed(1)}%
+                      </span>
                     </div>
                   </div>
+                  <div className={`overflow-hidden h-2 mb-4 text-xs flex rounded ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${result.prediction * 100}%` }}
+                      className={cn(
+                        "shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-1000",
+                        result.prediction > 0.7 ? "bg-rose-500" :
+                          result.prediction > 0.3 ? "bg-amber-500" :
+                            "bg-emerald-500"
+                      )}
+                    />
+                  </div>
+                </div>
 
-                  <div className={`mt-8 pt-8 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-slate-100'}`}>
-                    <h4 className={`text-xs font-bold uppercase tracking-widest mb-4 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Core Indicators</h4>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>URL Length</span>
-                        <span className={`font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{result.features.urlLength}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>Subdomains</span>
-                        <span className={`font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{result.features.subdomainCount}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>HTTPS Protocol</span>
-                        <span className={cn("font-medium", result.features.isHttps ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                          {result.features.isHttps ? 'Secure' : 'Insecure'}
-                        </span>
-                      </div>
+                <div className={`mt-8 pt-8 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-slate-100'}`}>
+                  <h4 className={`text-xs font-bold uppercase tracking-widest mb-4 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>AI Analysis Details</h4>
+                  <div className="space-y-3 mb-6">
+                    <div className="flex justify-between text-sm">
+                      <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>Label</span>
+                      <span className={cn("font-mono font-bold uppercase", result.prediction > 0.5 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>{result.label || 'Unknown'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>Danger Score</span>
+                      <span className={cn("font-mono font-bold", result.prediction > 0.5 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400")}>{((result.prediction || 0) * 100).toFixed(2)} / 100</span>
+                    </div>
+                  </div>
+
+                  <h4 className={`text-xs font-bold uppercase tracking-widest mb-4 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Core Indicators</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>URL Length</span>
+                      <span className={`font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{result.features.urlLength}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>Subdomains</span>
+                      <span className={`font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{result.features.subdomainCount}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className={`text-slate-500 ${theme === 'dark' ? 'text-slate-400' : ''}`}>HTTPS Protocol</span>
+                      <span className={cn("font-medium", result.features.isHttps ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                        {result.features.isHttps ? 'Secure' : 'Insecure'}
+                      </span>
                     </div>
                   </div>
                 </div>
+              </div>
               <div className="bg-slate-900 dark:bg-slate-800 text-white p-6 rounded-3xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
@@ -334,9 +339,9 @@ export default function App() {
                     <p className="font-mono text-sm truncate">{url}</p>
                   </div>
                 </div>
-                <a 
-                  href={url.startsWith('http') ? url : `http://${url}`} 
-                  target="_blank" 
+                <a
+                  href={url.startsWith('http') ? url : `http://${url}`}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors"
                 >
