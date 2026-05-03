@@ -1,0 +1,30 @@
+services:
+  # Jenkins CI/CD Server
+  jenkins:
+    build:
+      context: .
+      dockerfile: docker/jenkins.Dockerfile
+    image: custom-jenkins:latest
+    container_name: jenkins-ci
+    ports:
+      - "8085:8080"
+      - "50000:50000"  # Jenkins agent port
+    user: "root"
+
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # Mount Docker socket so Jenkins can control Docker on host
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount project directory for builds (optional - Jenkins will clone from Git)
+      - ./:/workspace
+    restart: unless-stopped
+    networks:
+      - jenkins-network
+
+networks:
+  jenkins-network:
+    driver: bridge
+
+volumes:
+  jenkins_home:
+    driver: local
