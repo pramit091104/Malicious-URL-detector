@@ -98,19 +98,19 @@ pipeline {
             steps {
                 echo "🏥 Running health checks..."
                 script {
-                    // Find the exact docker network created by docker-compose
-                    env.NETWORK_NAME = sh(
-                        script: "docker network ls --filter name=${UNIQUE_PROJECT_NAME} --format '{{.Name}}' | grep -i app-network | head -n 1",
+                    // Dynamically fetch the random port assigned to the backend host
+                    env.ACTUAL_BACKEND_PORT = sh(
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
                         returnStdout: true
                     ).trim()
                     
-                    echo "Using Docker Network: ${env.NETWORK_NAME}"
+                    echo "Dynamic Backend Port is ${env.ACTUAL_BACKEND_PORT}"
 
                     sh """
-                        echo "Checking backend API from inside the Docker network..."
-                        # Use a temporary curl container attached to the same network to bypass host/localhost routing issues
-                        docker run --rm --network ${env.NETWORK_NAME} curlimages/curl -sS -f --retry 5 --retry-connrefused --retry-delay 10 --max-time 60 \\
-                            http://${UNIQUE_PROJECT_NAME}-backend:3000/api/scan -X POST \\
+                        echo "Checking backend API (waiting for AI Model to download if needed)..."
+                        # Retry up to 5 times, waiting 10 seconds between retries, max time per request 60s
+                        curl -f --retry 5 --retry-connrefused --retry-delay 10 --max-time 60 \\
+                            http://127.0.0.1:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
                             -H "Content-Type: application/json" \\
                             -d '{"url":"https://google.com"}' || { echo "❌ Backend API check failed after multiple retries"; exit 1; }
                     """
