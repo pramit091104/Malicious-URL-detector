@@ -168,14 +168,15 @@ export default function App() {
       } else {
         setResult(data);
         showCustomAlert('URL scanned successfully!', 'success');
+        fetchHistory(); // Refresh history after scan
       }
     } catch (error) {
       console.error("Scan failed", error);
+      showCustomAlert('Failed to connect to the server.', 'error');
     } finally {
       setIsScanning(false);
     }
   };
-
 
   return (
     <div className={`min-h-screen font-sans selection:bg-indigo-100 transition-colors duration-500 relative ${theme === 'dark' ? 'bg-slate-950 text-slate-100 selection:bg-indigo-900' : 'bg-[#F8FAFC] text-slate-900'}`}>
@@ -557,15 +558,6 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Empty State */}
-        {!result && !isScanning && (
-          <div className="max-w-md mx-auto text-center py-20 opacity-40">
-            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-200'}`}>
-              <Search className={`w-10 h-10 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`} />
-            </div>
-            <p className={`font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Enter a URL above to begin the security audit.</p>
-          </div>
-        )}
       </main>
 
       {/* Footer */}
