@@ -4,8 +4,8 @@ services:
     build:
       context: .
       dockerfile: frontend.Dockerfile
-    image: ${PROJECT_NAME}-frontend:latest
-    container_name: ${PROJECT_NAME}-frontend
+    image: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-frontend:latest
+    container_name: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-frontend
     ports:
       - "${FRONTEND_PORT}:80"
     depends_on:
@@ -19,8 +19,8 @@ services:
     build:
       context: .
       dockerfile: backend.Dockerfile
-    image: ${PROJECT_NAME}-backend:latest
-    container_name: ${PROJECT_NAME}-backend
+    image: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-backend:latest
+    container_name: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-backend
     ports:
       - "${BACKEND_PORT}:3000"
     environment:
