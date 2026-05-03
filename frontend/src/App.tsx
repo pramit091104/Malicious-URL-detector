@@ -79,11 +79,21 @@ export default function App() {
     alertBox.style.background = style.background;
     alertBox.style.borderLeft = style.borderLeft;
 
+    // Define dismiss timeout based on alert type
+    const timeoutMap = {
+      success: 3000,  // 3 seconds
+      error: 5000,    // 5 seconds
+      warning: 4000,  // 4 seconds
+      info: 3000      // 3 seconds
+    };
+
+    const dismissTime = timeoutMap[type];
+
     document.body.appendChild(alertBox);
 
     setTimeout(() => {
       alertBox.remove();
-    }, 3000);
+    }, dismissTime);
   }
 
   // Count frequency for top 10
