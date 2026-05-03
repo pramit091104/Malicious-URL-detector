@@ -1,15 +1,21 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'PROJECT_NAME', defaultValue: 'url-detector', description: 'Base project name for containers')
+    }
+
     environment {
         COMPOSE_FILE = 'docker-compose.yml'
-        PROJECT_NAME = 'url-detector'
+        // Create a safe branch name (lowercase, alphanumeric and hyphens only)
+        SAFE_BRANCH = "${env.BRANCH_NAME ? env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9-]', '-').toLowerCase() : 'local'}"
+        UNIQUE_PROJECT_NAME = "${params.PROJECT_NAME}-${SAFE_BRANCH}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "📥 Checking out code from GitHub..."
+                echo "📥 Checking out code from GitHub (Branch: ${env.BRANCH_NAME ?: 'local'})..."
                 checkout scm
             }
         }
@@ -24,13 +30,18 @@ pipeline {
 
         stage('Cleanup Old Containers') {
             steps {
-                echo "🧹 Stopping and removing old application containers..."
+                echo "🧹 Stopping and removing old application containers for branch ${SAFE_BRANCH}..."
                 script {
-                    sh '''
-                        docker-compose -f docker-compose.yml down --remove-orphans || true
-                        docker rm -f pramit-frontend pramit-backend || true
+                    sh """
+                        echo "PROJECT_NAME=${UNIQUE_PROJECT_NAME}" > .env
+                        # Use 0 to let Docker assign random available host ports
+                        echo "FRONTEND_PORT=0" >> .env
+                        echo "BACKEND_PORT=0" >> .env
+                        
+                        docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml down --remove-orphans || true
+                        docker rm -f ${UNIQUE_PROJECT_NAME}-frontend ${UNIQUE_PROJECT_NAME}-backend || true
                         docker network prune -f || true
-                    '''
+                    """
                 }
             }
         }
@@ -38,14 +49,14 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 echo "🔨 Building Docker images for frontend and backend..."
-                sh 'docker-compose -f docker-compose.yml build --no-cache'
+                sh "docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml build --no-cache"
             }
         }
 
         stage('Deploy Application') {
             steps {
                 echo "🚀 Deploying application containers..."
-                sh 'docker-compose -f docker-compose.yml up -d'
+                sh "docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml up -d"
             }
         }
 
@@ -53,19 +64,19 @@ pipeline {
             steps {
                 echo "✅ Verifying containers are running..."
                 script {
-                    sh 'docker ps --filter name=pramit-frontend --filter name=pramit-backend'
+                    sh "docker ps --filter name=${UNIQUE_PROJECT_NAME}-frontend --filter name=${UNIQUE_PROJECT_NAME}-backend"
                     
                     // Wait for containers to be healthy
                     sleep(time: 5, unit: 'SECONDS')
                     
                     // Check if containers are still running
                     def frontendRunning = sh(
-                        script: 'docker ps -q -f name=pramit-frontend',
+                        script: "docker ps -q -f name=${UNIQUE_PROJECT_NAME}-frontend",
                         returnStdout: true
                     ).trim()
                     
                     def backendRunning = sh(
-                        script: 'docker ps -q -f name=pramit-backend',
+                        script: "docker ps -q -f name=${UNIQUE_PROJECT_NAME}-backend",
                         returnStdout: true
                     ).trim()
                     
@@ -83,14 +94,21 @@ pipeline {
             steps {
                 echo "🏥 Running health checks..."
                 script {
-                    // Check backend API
-                    sh '''
+                    // Dynamically fetch the random port assigned to the backend
+                    env.ACTUAL_BACKEND_PORT = sh(
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "Dynamic Backend Port is ${env.ACTUAL_BACKEND_PORT}"
+
+                    sh """
                         echo "Checking backend API..."
                         sleep 10
-                        curl -f http://localhost:4000/api/scan -X POST \
-                            -H "Content-Type: application/json" \
+                        curl -f http://localhost:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
+                            -H "Content-Type: application/json" \\
                             -d '{"url":"https://google.com"}' || echo "Backend API check failed (might need warmup)"
-                    '''
+                    """
                 }
             }
         }
@@ -100,29 +118,37 @@ pipeline {
         always {
             echo "🏁 CI/CD Pipeline Finished!"
             // Show container logs for debugging
-            sh '''
+            sh """
                 echo "=== Frontend Logs ==="
-                docker logs pramit-frontend --tail 50 || true
+                docker logs ${UNIQUE_PROJECT_NAME}-frontend --tail 50 || true
                 echo "=== Backend Logs ==="
-                docker logs pramit-backend --tail 50 || true
-            '''
+                docker logs ${UNIQUE_PROJECT_NAME}-backend --tail 50 || true
+            """
         }
         success {
-            echo """
-            ✅ Deployment Successful!
-            
-            🌐 Frontend: http://localhost:3000
-            🔌 Backend API: http://localhost:4000
-            
-            Run 'docker ps' to see running containers.
-            """
+            script {
+                // Dynamically fetch the random port assigned to the frontend
+                env.ACTUAL_FRONTEND_PORT = sh(
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | awk -F ':' '{print \$NF}'",
+                    returnStdout: true
+                ).trim()
+                
+                echo """
+                ✅ Deployment Successful for branch ${env.BRANCH_NAME ?: 'local'}!
+                
+                🌐 Frontend Preview: http://localhost:${env.ACTUAL_FRONTEND_PORT}
+                🔌 Backend API: http://localhost:${env.ACTUAL_BACKEND_PORT}
+                
+                Run 'docker ps | grep ${UNIQUE_PROJECT_NAME}' to see the running containers for this branch.
+                """
+            }
         }
         failure {
             echo """
-            ❌ Deployment Failed!
+            ❌ Deployment Failed for branch ${env.BRANCH_NAME ?: 'local'}!
             
             Check the logs above for errors.
-            Run 'docker logs pramit-frontend' or 'docker logs pramit-backend' for details.
+            Run 'docker logs ${UNIQUE_PROJECT_NAME}-frontend' or 'docker logs ${UNIQUE_PROJECT_NAME}-backend' for details.
             """
         }
     }
