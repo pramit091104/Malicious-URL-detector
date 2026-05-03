@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, ShieldCheck, Search, Loader2, RefreshCw, AlertTriangle, ExternalLink, Moon, Sun } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, Search, Loader2, RefreshCw, AlertTriangle, ExternalLink, Moon, Sun, History, X, Clock, ChevronRight, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -17,7 +17,7 @@ export default function App() {
     rawScore?: number;
     features: any;
   } | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<{ url: string; label: number; created_at: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showTop10, setShowTop10] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -28,6 +28,16 @@ export default function App() {
     return 'light';
   });
 
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('/api/history');
+      const data = await res.json();
+      setHistory(data);
+    } catch (error) {
+      console.error("Failed to fetch history", error);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('theme', theme);
   }, [theme]);
@@ -36,6 +46,7 @@ export default function App() {
     // Apply theme on initial load
     const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
     setTheme(savedTheme);
+    fetchHistory();
   }, []);
 
   const toggleTheme = () => {
@@ -61,14 +72,15 @@ export default function App() {
     }, 3000);
   }
 
-  // Count frequency for top 10
-  const top10 = React.useMemo(() => {
-    const freq: Record<string, number> = {};
-    history.forEach((u) => { freq[u] = (freq[u] || 0) + 1; });
-    return Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([u, count]) => ({ url: u, count }));
+  // Get unique recent scans for Top 10
+  const recentTop10 = React.useMemo(() => {
+    const unique = new Map<string, typeof history[0]>();
+    history.forEach(item => {
+      if (!unique.has(item.url)) {
+        unique.set(item.url, item);
+      }
+    });
+    return Array.from(unique.values()).slice(0, 10);
   }, [history]);
 
   const handleScan = async (e: React.FormEvent) => {
@@ -77,9 +89,6 @@ export default function App() {
 
     setIsScanning(true);
     setResult(null);
-
-    // Add to history (most recent first, no duplicates)
-    setHistory((prev) => [url, ...prev.filter((u) => u !== url)]);
 
     try {
       const res = await fetch('/api/scan', {
@@ -94,6 +103,7 @@ export default function App() {
         showCustomAlert(data.error);
       } else {
         setResult(data);
+        fetchHistory(); // Refresh history after scan
       }
     } catch (error) {
       console.error("Scan failed", error);
@@ -131,71 +141,147 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-6 py-12">
         {/* History and Top 10 Buttons */}
-        <div className="flex justify-end gap-4 mb-6">
+        <div className="flex justify-end gap-3 mb-8">
           <button
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'}`}
-            onClick={() => setShowHistory((v) => !v)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 ${theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm'}`}
+            onClick={() => setShowHistory(true)}
             type="button"
           >
+            <History className="w-4 h-4" />
             History
           </button>
           <button
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${theme === 'dark' ? 'bg-indigo-900 text-indigo-300 hover:bg-indigo-800' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 ${theme === 'dark' ? 'bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100'}`}
             onClick={() => setShowTop10((v) => !v)}
             type="button"
           >
-            Filter Top 10
+            <Activity className="w-4 h-4" />
+            Top 10 Recent
           </button>
         </div>
 
-        {/* History Dropdown */}
-        {showHistory && (
-          <div className={`absolute right-10 z-20 rounded-xl shadow-lg p-4 w-80 max-h-96 overflow-y-auto border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className={`font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Previously Searched URLs</div>
-            {history.length === 0 ? (
-              <div className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>No history yet.</div>
-            ) : (
-              <ul className="space-y-2">
-                {history.map((h, i) => (
-                  <li key={h + i} className="flex justify-between items-center">
-                    <span className={`truncate max-w-[180px] text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{h}</span>
-                    <button
-                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                      onClick={() => { setUrl(h); setShowHistory(false); }}
-                    >
-                      Use
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        {/* History Sidebar */}
+        <AnimatePresence>
+          {showHistory && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowHistory(false)}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className={`fixed right-0 top-0 bottom-0 w-full max-w-md z-50 shadow-2xl flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-l border-slate-800' : 'bg-white'}`}
+              >
+                <div className={`p-6 border-b flex items-center justify-between ${theme === 'dark' ? 'border-slate-800' : 'border-slate-100'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-600/10 rounded-xl flex items-center justify-center">
+                      <History className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Scan History</h3>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Your past security audits</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowHistory(false)}
+                    className={`p-2 rounded-lg hover:bg-slate-100 transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'text-slate-500'}`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
 
-        {/* Top 10 Dropdown */}
-        {showTop10 && (
-          <div className={`absolute right-40 z-20 rounded-xl shadow-lg p-4 w-80 max-h-96 overflow-y-auto border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className={`font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Top 10 Most Searched</div>
-            {top10.length === 0 ? (
-              <div className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>No data yet.</div>
-            ) : (
-              <ul className="space-y-2">
-                {top10.map((item, i) => (
-                  <li key={item.url + i} className="flex justify-between items-center">
-                    <span className={`truncate max-w-[140px] text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{item.url}</span>
-                    <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{item.count} times</span>
-                    <button
-                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline ml-2"
-                      onClick={() => { setUrl(item.url); setShowTop10(false); }}
-                    >
-                      Use
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {history.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                      <History className="w-12 h-12 mb-4" />
+                      <p className="font-medium">No history yet</p>
+                    </div>
+                  ) : (
+                    history.map((h, i) => (
+                      <motion.div
+                        key={h.url + h.created_at + i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className={`group p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md ${theme === 'dark' ? 'bg-slate-800/50 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}
+                        onClick={() => { setUrl(h.url); setShowHistory(false); }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-sm font-mono truncate mb-1 ${theme === 'dark' ? 'text-slate-200' : 'text-slate-700'}`}>{h.url}</p>
+                            <div className="flex items-center gap-3">
+                              <span className={cn(
+                                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                                h.label === 1 ? "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                              )}>
+                                {h.label === 1 ? 'Malicious' : 'Safe'}
+                              </span>
+                              <span className={`text-[10px] flex items-center gap-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                <Clock className="w-3 h-3" />
+                                {new Date(h.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Top 10 Grid */}
+        <AnimatePresence>
+          {showTop10 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-12 overflow-hidden"
+            >
+              <div className={`p-6 rounded-3xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-800' : 'bg-indigo-50/50 border-indigo-100'}`}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-white" />
+                  </div>
+                  <h3 className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Top 10 Recent Unique Scans</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {recentTop10.length === 0 ? (
+                    <p className={`col-span-full text-center py-8 opacity-40 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>No scans recorded yet.</p>
+                  ) : (
+                    recentTop10.map((item, i) => (
+                      <motion.button
+                        key={item.url + i}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { setUrl(item.url); }}
+                        className={`text-left p-4 rounded-2xl border transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'}`}
+                      >
+                        <p className={`text-xs font-mono truncate mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{item.url}</p>
+                        <span className={cn(
+                          "text-[9px] font-bold uppercase px-2 py-0.5 rounded-md",
+                          item.label === 1 ? "bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400"
+                        )}>
+                          {item.label === 1 ? 'Malicious' : 'Safe'}
+                        </span>
+                      </motion.button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className={`text-4xl font-extrabold mb-4 tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
