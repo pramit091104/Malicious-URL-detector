@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+    }
+
     parameters {
         string(name: 'PROJECT_NAME', defaultValue: 'url-detector', description: 'Base project name for containers')
     }
@@ -103,11 +107,12 @@ pipeline {
                     echo "Dynamic Backend Port is ${env.ACTUAL_BACKEND_PORT}"
 
                     sh """
-                        echo "Checking backend API..."
-                        sleep 10
-                        curl -f http://localhost:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
+                        echo "Checking backend API (waiting for AI Model to download if needed)..."
+                        # Retry up to 5 times, waiting 10 seconds between retries, max time per request 60s
+                        curl -f --retry 5 --retry-connrefused --retry-delay 10 --max-time 60 \\
+                            http://127.0.0.1:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
                             -H "Content-Type: application/json" \\
-                            -d '{"url":"https://google.com"}' || echo "Backend API check failed (might need warmup)"
+                            -d '{"url":"https://google.com"}' || { echo "❌ Backend API check failed after multiple retries"; exit 1; }
                     """
                 }
             }

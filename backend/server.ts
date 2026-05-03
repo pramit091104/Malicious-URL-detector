@@ -74,6 +74,16 @@ async function startServer() {
     }
   });
 
+  app.get("/api/history", (req, res) => {
+    try {
+      const history = db.prepare("SELECT url, label, created_at FROM training_data ORDER BY created_at DESC").all();
+      res.json(history);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch history" });
+    }
+  });
+
   // Legacy Retraining & Weight API endpoints removed since inference is now handled by an ONNX HuggingFace Model.
 
   // Note: Static files are now served separately by the frontend container.
