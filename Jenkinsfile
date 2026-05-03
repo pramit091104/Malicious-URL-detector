@@ -98,9 +98,9 @@ pipeline {
             steps {
                 echo "🏥 Running health checks..."
                 script {
-                    // Dynamically fetch the random port assigned to the backend
+                    // Dynamically fetch the random port assigned to the backend host
                     env.ACTUAL_BACKEND_PORT = sh(
-                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
                         returnStdout: true
                     ).trim()
                     
@@ -110,7 +110,7 @@ pipeline {
                         echo "Checking backend API (waiting for AI Model to download if needed)..."
                         # Retry up to 5 times, waiting 10 seconds between retries, max time per request 60s
                         curl -f --retry 5 --retry-connrefused --retry-delay 10 --max-time 60 \\
-                            http://127.0.0.1:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
+                            http://host.docker.internal:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
                             -H "Content-Type: application/json" \\
                             -d '{"url":"https://google.com"}' || { echo "❌ Backend API check failed after multiple retries"; exit 1; }
                     """
