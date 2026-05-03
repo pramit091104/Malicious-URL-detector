@@ -44,7 +44,16 @@ export default function App() {
 
   function showCustomAlert(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') {
     const alertBox = document.createElement("div");
-    alertBox.innerText = message;
+    
+    // Define icons for different alert types
+    const icons = {
+      success: "✓",
+      error: "✕",
+      warning: "⚠",
+      info: "ℹ"
+    };
+    
+    alertBox.innerHTML = `<span style="margin-right: 8px; font-weight: bold;">${icons[type]}</span>${message}`;
     alertBox.style.position = "fixed";
     alertBox.style.top = "20px";
     alertBox.style.right = "20px";
@@ -54,6 +63,8 @@ export default function App() {
     alertBox.style.color = "white";
     alertBox.style.fontWeight = "500";
     alertBox.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)";
+    alertBox.style.display = "flex";
+    alertBox.style.alignItems = "center";
 
     // Define colors and styles for different alert types
     const alertStyles = {
