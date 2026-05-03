@@ -1,47 +1,155 @@
 pipeline {
     agent any
 
-    // Reference the NodeJS tool configured in Jenkins Global Tool Configuration
-    tools {
-        nodejs 'NodeJs' 
+    parameters {
+        string(name: 'PROJECT_NAME', defaultValue: 'url-detector', description: 'Base project name for containers')
+    }
+
+    environment {
+        COMPOSE_FILE = 'docker-compose.yml'
+        // Create a safe branch name (lowercase, alphanumeric and hyphens only)
+        SAFE_BRANCH = "${env.BRANCH_NAME ? env.BRANCH_NAME.replaceAll('[^a-zA-Z0-9-]', '-').toLowerCase() : 'local'}"
+        UNIQUE_PROJECT_NAME = "${params.PROJECT_NAME}-${SAFE_BRANCH}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "Checking out code from Repository..."
+                echo "📥 Checking out code from GitHub (Branch: ${env.BRANCH_NAME ?: 'local'})..."
                 checkout scm
             }
         }
 
-        stage('Deploy with Docker Compose') {
-    steps {
-        echo "Cleaning up previous application containers..."
-        
-        // 1. Standard compose cleanup
-        sh 'docker-compose down --remove-orphans'
-        
-        // 2. Explicitly remove the conflicting container name by force
-        // The '|| true' ensures the pipeline doesn't fail if the container is already gone
-        sh 'docker rm -f pramit-frontend pramit-backend || true'
-        
-        echo "Deploying Live Application via Docker Compose..."
-        sh 'docker-compose up -d --build frontend backend'
-    }
-}
+        stage('Verify Docker') {
+            steps {
+                echo "🔍 Verifying Docker is accessible..."
+                sh 'docker --version'
+                sh 'docker-compose --version'
+            }
+        }
+
+        stage('Cleanup Old Containers') {
+            steps {
+                echo "🧹 Stopping and removing old application containers for branch ${SAFE_BRANCH}..."
+                script {
+                    sh """
+                        echo "PROJECT_NAME=${UNIQUE_PROJECT_NAME}" > .env
+                        # Use 0 to let Docker assign random available host ports
+                        echo "FRONTEND_PORT=0" >> .env
+                        echo "BACKEND_PORT=0" >> .env
+                        
+                        docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml down --remove-orphans || true
+                        docker rm -f ${UNIQUE_PROJECT_NAME}-frontend ${UNIQUE_PROJECT_NAME}-backend || true
+                        docker network prune -f || true
+                    """
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                echo "🔨 Building Docker images for frontend and backend..."
+                sh "docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml build --no-cache"
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                echo "🚀 Deploying application containers..."
+                sh "docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml up -d"
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo "✅ Verifying containers are running..."
+                script {
+                    sh "docker ps --filter name=${UNIQUE_PROJECT_NAME}-frontend --filter name=${UNIQUE_PROJECT_NAME}-backend"
+                    
+                    // Wait for containers to be healthy
+                    sleep(time: 5, unit: 'SECONDS')
+                    
+                    // Check if containers are still running
+                    def frontendRunning = sh(
+                        script: "docker ps -q -f name=${UNIQUE_PROJECT_NAME}-frontend",
+                        returnStdout: true
+                    ).trim()
+                    
+                    def backendRunning = sh(
+                        script: "docker ps -q -f name=${UNIQUE_PROJECT_NAME}-backend",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (!frontendRunning || !backendRunning) {
+                        error("❌ One or more containers failed to start!")
+                    }
+                    
+                    echo "✅ Frontend container ID: ${frontendRunning}"
+                    echo "✅ Backend container ID: ${backendRunning}"
+                }
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo "🏥 Running health checks..."
+                script {
+                    // Dynamically fetch the random port assigned to the backend
+                    env.ACTUAL_BACKEND_PORT = sh(
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "Dynamic Backend Port is ${env.ACTUAL_BACKEND_PORT}"
+
+                    sh """
+                        echo "Checking backend API..."
+                        sleep 10
+                        curl -f http://localhost:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
+                            -H "Content-Type: application/json" \\
+                            -d '{"url":"https://google.com"}' || echo "Backend API check failed (might need warmup)"
+                    """
+                }
+            }
+        }
     }
 
     post {
         always {
-            // Clean up the workspace to save disk space on the Jenkins agent
-            cleanWs()
-            echo "CI/CD Pipeline Finished!"
+            echo "🏁 CI/CD Pipeline Finished!"
+            // Show container logs for debugging
+            sh """
+                echo "=== Frontend Logs ==="
+                docker logs ${UNIQUE_PROJECT_NAME}-frontend --tail 50 || true
+                echo "=== Backend Logs ==="
+                docker logs ${UNIQUE_PROJECT_NAME}-backend --tail 50 || true
+            """
         }
         success {
-            echo "Build was successful! ✅ Your code is verified and safe."
+            script {
+                // Dynamically fetch the random port assigned to the frontend
+                env.ACTUAL_FRONTEND_PORT = sh(
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | awk -F ':' '{print \$NF}'",
+                    returnStdout: true
+                ).trim()
+                
+                echo """
+                ✅ Deployment Successful for branch ${env.BRANCH_NAME ?: 'local'}!
+                
+                🌐 Frontend Preview: http://localhost:${env.ACTUAL_FRONTEND_PORT}
+                🔌 Backend API: http://localhost:${env.ACTUAL_BACKEND_PORT}
+                
+                Run 'docker ps | grep ${UNIQUE_PROJECT_NAME}' to see the running containers for this branch.
+                """
+            }
         }
         failure {
-            echo "Build failed! ❌ Check the Jenkins logs for Docker or Build errors."
+            echo """
+            ❌ Deployment Failed for branch ${env.BRANCH_NAME ?: 'local'}!
+            
+            Check the logs above for errors.
+            Run 'docker logs ${UNIQUE_PROJECT_NAME}-frontend' or 'docker logs ${UNIQUE_PROJECT_NAME}-backend' for details.
+            """
         }
     }
 }
