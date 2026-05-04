@@ -33,10 +33,11 @@ services:
 
   # Prometheus Metrics Storage
   prometheus:
-    image: prom/prometheus:latest
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
     container_name: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-prometheus
     volumes:
-      - ./prometheus:/etc/prometheus
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
