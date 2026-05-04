@@ -41,6 +41,8 @@ pipeline {
                         # Use 0 to let Docker assign random available host ports
                         echo "FRONTEND_PORT=0" >> .env
                         echo "BACKEND_PORT=0" >> .env
+                        echo "GRAFANA_PORT=0" >> .env
+                        echo "PROMETHEUS_PORT=0" >> .env
                         
                         docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml down --remove-orphans || true
                         docker rm -f ${UNIQUE_PROJECT_NAME}-frontend ${UNIQUE_PROJECT_NAME}-backend || true
@@ -134,7 +136,13 @@ pipeline {
             script {
                 // Dynamically fetch the random port assigned to the frontend
                 env.ACTUAL_FRONTEND_PORT = sh(
-                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | awk -F ':' '{print \$NF}'",
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | head -n 1 | awk -F ':' '{print \$NF}'",
+                    returnStdout: true
+                ).trim()
+                
+                // Dynamically fetch Grafana port
+                env.ACTUAL_GRAFANA_PORT = sh(
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-grafana 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
                     returnStdout: true
                 ).trim()
                 
@@ -143,6 +151,7 @@ pipeline {
                 
                 🌐 Frontend Preview: http://localhost:${env.ACTUAL_FRONTEND_PORT}
                 🔌 Backend API: http://localhost:${env.ACTUAL_BACKEND_PORT}
+                📊 Grafana Dashboard: http://localhost:${env.ACTUAL_GRAFANA_PORT}
                 
                 Run 'docker ps | grep ${UNIQUE_PROJECT_NAME}' to see the running containers for this branch.
                 """
