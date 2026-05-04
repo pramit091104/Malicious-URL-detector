@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+    }
+
     parameters {
         string(name: 'PROJECT_NAME', defaultValue: 'url-detector', description: 'Base project name for containers')
     }
@@ -37,6 +41,8 @@ pipeline {
                         # Use 0 to let Docker assign random available host ports
                         echo "FRONTEND_PORT=0" >> .env
                         echo "BACKEND_PORT=0" >> .env
+                        echo "GRAFANA_PORT=0" >> .env
+                        echo "PROMETHEUS_PORT=0" >> .env
                         
                         docker-compose -p ${UNIQUE_PROJECT_NAME} -f docker-compose.yml down --remove-orphans || true
                         docker rm -f ${UNIQUE_PROJECT_NAME}-frontend ${UNIQUE_PROJECT_NAME}-backend || true
@@ -94,20 +100,21 @@ pipeline {
             steps {
                 echo "🏥 Running health checks..."
                 script {
-                    // Dynamically fetch the random port assigned to the backend
+                    // Dynamically fetch the random port assigned to the backend host
                     env.ACTUAL_BACKEND_PORT = sh(
-                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | awk -F ':' '{print \$NF}'",
+                        script: "docker port ${UNIQUE_PROJECT_NAME}-backend 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
                         returnStdout: true
                     ).trim()
                     
                     echo "Dynamic Backend Port is ${env.ACTUAL_BACKEND_PORT}"
 
                     sh """
-                        echo "Checking backend API..."
-                        sleep 10
-                        curl -f http://localhost:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
+                        echo "Checking backend API (waiting for AI Model to download if needed)..."
+                        # Retry up to 5 times, waiting 10 seconds between retries, max time per request 60s
+                        curl -f --retry 5 --retry-connrefused --retry-delay 10 --max-time 60 \\
+                            http://host.docker.internal:${env.ACTUAL_BACKEND_PORT}/api/scan -X POST \\
                             -H "Content-Type: application/json" \\
-                            -d '{"url":"https://google.com"}' || echo "Backend API check failed (might need warmup)"
+                            -d '{"url":"https://google.com"}' || { echo "❌ Backend API check failed after multiple retries"; exit 1; }
                     """
                 }
             }
@@ -129,7 +136,13 @@ pipeline {
             script {
                 // Dynamically fetch the random port assigned to the frontend
                 env.ACTUAL_FRONTEND_PORT = sh(
-                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | awk -F ':' '{print \$NF}'",
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | head -n 1 | awk -F ':' '{print \$NF}'",
+                    returnStdout: true
+                ).trim()
+                
+                // Dynamically fetch Grafana port
+                env.ACTUAL_GRAFANA_PORT = sh(
+                    script: "docker port ${UNIQUE_PROJECT_NAME}-grafana 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
                     returnStdout: true
                 ).trim()
                 
@@ -138,6 +151,7 @@ pipeline {
                 
                 🌐 Frontend Preview: http://localhost:${env.ACTUAL_FRONTEND_PORT}
                 🔌 Backend API: http://localhost:${env.ACTUAL_BACKEND_PORT}
+                📊 Grafana Dashboard: http://localhost:${env.ACTUAL_GRAFANA_PORT}
                 
                 Run 'docker ps | grep ${UNIQUE_PROJECT_NAME}' to see the running containers for this branch.
                 """
