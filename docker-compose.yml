@@ -31,9 +31,42 @@ services:
     networks:
       - app-network
 
+  # Prometheus Metrics Storage
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: ${UNIQUE_PROJECT_NAME:-${PROJECT_NAME:-url-detector}}-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   ai-backend-data:
+  prometheus-data:
+  grafana-data:

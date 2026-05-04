@@ -7,6 +7,10 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import { extractFeatures } from "./src/lib/featureExtraction.js";
 import { getModelPrediction } from "./src/lib/mlModel.js";
+import promClient from "prom-client";
+
+// Initialize Prometheus default metrics collection
+promClient.collectDefaultMetrics();
 
 dotenv.config();
 
@@ -81,6 +85,16 @@ async function startServer() {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to fetch history" });
+    }
+  });
+
+  // Prometheus Metrics Endpoint
+  app.get("/metrics", async (req, res) => {
+    try {
+      res.set("Content-Type", promClient.register.contentType);
+      res.end(await promClient.register.metrics());
+    } catch (err) {
+      res.status(500).end(err);
     }
   });
 
