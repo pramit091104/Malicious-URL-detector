@@ -10,7 +10,9 @@ services:
       - "8085:8080"
       - "50000:50000"  # Jenkins agent port
     user: "root"
-
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - jenkins_home:/var/jenkins_home
       # Mount Docker socket so Jenkins can control Docker on host
@@ -28,3 +30,4 @@ networks:
 volumes:
   jenkins_home:
     driver: local
+

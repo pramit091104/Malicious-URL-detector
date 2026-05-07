@@ -124,25 +124,28 @@ pipeline {
     post {
         always {
             echo "🏁 CI/CD Pipeline Finished!"
-            // Show container logs for debugging
-            sh """
-                echo "=== Frontend Logs ==="
-                docker logs ${UNIQUE_PROJECT_NAME}-frontend --tail 50 || true
-                echo "=== Backend Logs ==="
-                docker logs ${UNIQUE_PROJECT_NAME}-backend --tail 50 || true
-            """
+            script {
+                // Safe fallback if UNIQUE_PROJECT_NAME was never resolved (e.g. pipeline failed at Checkout)
+                def projectName = env.UNIQUE_PROJECT_NAME ?: 'url-detector-local'
+                try {
+                    sh """
+                        echo "=== Frontend Logs ==="
+                        docker logs ${projectName}-frontend --tail 50 || true
+                        echo "=== Backend Logs ==="
+                        docker logs ${projectName}-backend --tail 50 || true
+                    """
+                } catch (Exception e) {
+                    echo "⚠️ Could not fetch container logs: ${e.message}"
+                }
+            }
         }
         success {
             script {
+                def projectName = env.UNIQUE_PROJECT_NAME ?: 'url-detector-local'
+
                 // Dynamically fetch the random port assigned to the frontend
                 env.ACTUAL_FRONTEND_PORT = sh(
-                    script: "docker port ${UNIQUE_PROJECT_NAME}-frontend 80 | head -n 1 | awk -F ':' '{print \$NF}'",
-                    returnStdout: true
-                ).trim()
-                
-                // Dynamically fetch Grafana port
-                env.ACTUAL_GRAFANA_PORT = sh(
-                    script: "docker port ${UNIQUE_PROJECT_NAME}-grafana 3000 | head -n 1 | awk -F ':' '{print \$NF}'",
+                    script: "docker port ${projectName}-frontend 80 | head -n 1 | awk -F ':' '{print \$NF}'",
                     returnStdout: true
                 ).trim()
                 
@@ -151,19 +154,21 @@ pipeline {
                 
                 🌐 Frontend Preview: http://localhost:${env.ACTUAL_FRONTEND_PORT}
                 🔌 Backend API: http://localhost:${env.ACTUAL_BACKEND_PORT}
-                📊 Grafana Dashboard: http://localhost:${env.ACTUAL_GRAFANA_PORT}
                 
-                Run 'docker ps | grep ${UNIQUE_PROJECT_NAME}' to see the running containers for this branch.
+                Run 'docker ps | grep ${projectName}' to see the running containers for this branch.
                 """
             }
         }
         failure {
-            echo """
-            ❌ Deployment Failed for branch ${env.BRANCH_NAME ?: 'local'}!
-            
-            Check the logs above for errors.
-            Run 'docker logs ${UNIQUE_PROJECT_NAME}-frontend' or 'docker logs ${UNIQUE_PROJECT_NAME}-backend' for details.
-            """
+            script {
+                def projectName = env.UNIQUE_PROJECT_NAME ?: 'url-detector-local'
+                echo """
+                ❌ Deployment Failed for branch ${env.BRANCH_NAME ?: 'local'}!
+                
+                Check the logs above for errors.
+                Run 'docker logs ${projectName}-frontend' or 'docker logs ${projectName}-backend' for details.
+                """
+            }
         }
     }
 }
